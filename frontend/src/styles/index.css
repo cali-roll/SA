@@ -1,19 +1,19 @@
 * {
-    font-family: 'Inter custom',sans-serif;
-    font-weight: 600;
+    font-family: 'Inter custom',sans-serif ;
+    font-weight: 600 !important; 
 }
 
 .btn-primary {
-    color: black;
-    font-weight: 600;
-    background-color: black;
-    border-color: black;
+    color: black !important;
+    font-weight: 600 !important;
+    background-color: black !important;
+    border-color: black !important;
 }
 
 .btn-warning {
-    color: black;
-    font-weight: 600;
-    background-color: black;
-    border-color: black;
+    color: black !important;
+    font-weight: 600 !important;
+    background-color: black !important;
+    border-color: black !important;
 }
 
