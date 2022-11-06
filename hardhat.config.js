@@ -20,10 +20,18 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 module.exports = {
   solidity: "0.8.9",
   networks: {
-    
+    // matic:{
+    //   url: "https://rpc-mumbai.maticvigil.com",
+    //   accounts: [process.env.PRIVALTE_KEY],
+
+    // },
     goerli: {
       url: process.env.GOERLI_URL,
       accounts: [process.env.PRIVALTE_KEY],
     },  
+    // rinkeby: {
+    //   url: process.env.RINKEBY_URL,
+    //   accounts: [process.env.PRIVALTE_KEY],
+    // },
   },
 };

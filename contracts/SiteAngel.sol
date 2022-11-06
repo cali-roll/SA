@@ -3,6 +3,13 @@ pragma solidity ^0.8.9;
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+abstract contract ENS {
+        function resolver(bytes32 node) public virtual view returns (Resolver);
+    }
+
+    abstract contract Resolver {
+        function addr(bytes32 node) public virtual view returns (address);
+    }    
 
 contract SiteAngel is  Pausable {
     // uint256 UrlCount;
@@ -12,14 +19,14 @@ contract SiteAngel is  Pausable {
         uint ethreum;
         uint apecoin;
     }
-    mapping (string => TokenAmounts) public UrlToTokenAmounts;
+    mapping (bytes32 => TokenAmounts) public UrlToTokenAmounts;
     
     event NewTip(
-        string url,
+        bytes32 url,
         uint256 tokenamount
     );
     event ClaimTip(
-        string url,
+        bytes32 url,
         uint256 tokenamount
     );
 
@@ -79,8 +86,14 @@ contract SiteAngel is  Pausable {
     function balanceOf(address account) external view returns (uint256) {
         return balances[account];
     }
+    //ens
+    
+    ENS ens = ENS(0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e);
 
-
+    function resolve(bytes32 node) public view returns(address) {
+        Resolver resolver = ens.resolver(node);
+        return resolver.addr(node);
+    }
 
     receive() external payable {
     }
@@ -92,19 +105,20 @@ contract SiteAngel is  Pausable {
         return address(this).balance;
     }
 
-    function setEthTokenAmounts(string memory _url, uint256 _tokenamount) public{
+    function setEthTokenAmounts(bytes32 _url, uint256 _tokenamount) public{
     UrlToTokenAmounts[_url].ethreum= _tokenamount;
   }
 
-    function setApeTokenAmounts(string memory _url, uint256 _tokenamount) public{
+    function setApeTokenAmounts(bytes32 _url, uint256 _tokenamount) public{
     UrlToTokenAmounts[_url].apecoin= _tokenamount;
   }
-    function getUrlEthBalance(string memory _url) public view returns (uint256) {
+    function getUrlEthBalance(bytes32 _url) public view returns (uint256) {
+        require(UrlToTokenAmounts[_url].ethreum != 0, "there is no donation");
          return UrlToTokenAmounts[_url].ethreum;
     }
 // user call this to donate token to url who do not have DNS as ENS
     function donateEth(
-        string memory _url,
+        bytes32 _url,
         uint256 _amount
     ) public payable {
         //poolの金額をcontractに追加    
@@ -118,8 +132,9 @@ contract SiteAngel is  Pausable {
     }
 
 
-    function claimEth(string memory _url
+    function claimEth(bytes32 _url
     ) public {
+        // require(resolve(_url) == msg.sender, "you're not the owner of the DNS");
         uint claimAmount = UrlToTokenAmounts[_url].ethreum;
         require(
 		    claimAmount <= address(this).balance,

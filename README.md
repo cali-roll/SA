@@ -1,3 +1,5 @@
+## contract is not deployed yet using older one in frontend because of the congestion
+
 # Hardhat Boilerplate
 
 This repository contains a sample project that you can use as the starting point

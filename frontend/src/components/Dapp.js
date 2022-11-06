@@ -1,8 +1,9 @@
 import React from "react";
-
+import namehash from "eth-ens-namehash";
+import { Buffer } from 'buffer';
 // We'll use ethers to interact with the Ethereum network and our contract
 import { ethers } from "ethers";
-
+import * as PushAPI from "@pushprotocol/restapi";
 // We import the contract's artifacts and address here, as we are going to be
 // using them with ethers
 import SiteAngelArtifact from "../contracts/SiteAngel.json";
@@ -18,16 +19,59 @@ import { Transfer } from "./Transfer";
 import { TransactionErrorMessage } from "./TransactionErrorMessage";
 import { WaitingForTransactionMessage } from "./WaitingForTransactionMessage";
 import { NoTokensMessage } from "./NoTokensMessage";
+import { DonateTo } from "./DonateTo";
+import { Claim } from "./Claim";
+// require('dotenv').config();
 
 // This is the Hardhat Network id that we set in our hardhat.config.js.
 // Here's a list of network ids https://docs.metamask.io/guide/ethereum-provider.html#properties
 // to use when deploying to other networks.
-const contractAddress = "0x38e402483Ef1E5d2C811c9d5DdCA78B3d7587462";
+const contractAddress = "0xbb39B8F3Ef49aF97b7931BeA5E702851dc6b3925";
 const HARDHAT_NETWORK_ID = '5';
+
+//data for push!
+const PK =  "c7aeb07d8d9b34d39828044fbaa29079e9a17da9ced134a71f54efcfcebed4a2"; // channel private 
+const Pkey = `0x${PK}`;
+const signer = new ethers.Wallet(Pkey);
+const sendNotification = async(sender, reciever, text) => {
+  const message = "message: " + text;
+  const recipient = "eip155:5:" + reciever ;
+  console.log(recipient, "resi");
+  const title = sender + " sent tips to you";
+  console.log(sender, "send");
+  try {
+    // const json = "";
+    const apiResponse = await PushAPI.payloads.sendNotification({
+      signer,
+      type: 3, // target
+      identityType: 2, // direct payload
+      notification: {
+        title: "you recieved some tips",
+        body: "thanks you by pinokey.eth"
+      },
+      payload: {
+        title: "you recieved some tips",
+        body: "thanks you by pinokey.eth",
+        cta: '',
+        img: ''
+      },
+      // recipients: {recipient}, // recipient address
+      recipients: 'eip155:5:0x82313cca6cAAF121987D145088ff369Aa656fa6F', // recipient address, // recipient address
+      channel: 'eip155:5:0x236F8C09fAC243Ab44E0AaB95D193889d98A58f0', // your channel address
+      env: 'staging'
+    });
+    
+    // apiResponse?.status === 204, if sent successfully!
+    console.log('API repsonse: ', apiResponse);
+  } catch (err) {
+    console.error('Error: ', err);
+  }
+}
+
 
 // This is an error code that indicates that the user canceled a transaction
 const ERROR_CODE_TX_REJECTED_BY_USER = 4001;
-
+window.Buffer = window.Buffer || require('buffer').Buffer;
 // This component is in charge of doing these things:
 //   1. It connects to the user's wallet
 //   2. Initializes ethers and the Token contract
@@ -55,7 +99,8 @@ export class Dapp extends React.Component {
       transactionError: undefined,
       networkError: undefined,
       ethbalance: undefined,
-
+      txTo: undefined,
+      ensName: undefined
     };
 
     this.state = this.initialState;
@@ -87,7 +132,7 @@ export class Dapp extends React.Component {
 
     // If the token data or the user's balance hasn't loaded yet, we show
     // a loading component.
-    if (!this.state.tokenData || !this.state.balance) {
+    if (!this.state.tokenData ||!this.state.balance) {
       return <Loading />;
     }
 
@@ -100,7 +145,8 @@ export class Dapp extends React.Component {
              Donate to Url
             </h1>
             <p>
-              Welcome <b>{this.state.selectedAddress}</b>, you have{" "}
+              
+              Welcome {this.state.tokenData.ensName && (<b>{this.state.tokenData.ensName}</b>)} {!this.state.tokenData.ensName && (<b>{this.state.selectedAddress}</b>)}, you have{" "}
               <b>
                 {Math.round(ethers.utils.formatEther(this.state.balance) * 1e4) / 1e4} eth
               </b>
@@ -120,6 +166,9 @@ export class Dapp extends React.Component {
             */}
             {this.state.txBeingSent && (
               <WaitingForTransactionMessage txHash={this.state.txBeingSent} />
+            )}
+            {this.state.txTo && (
+              <DonateTo txTo={this.state.txTo} />
             )}
 
             {/* 
@@ -152,12 +201,21 @@ export class Dapp extends React.Component {
             */}
             {this.state.balance.gt(0) && (
               <Transfer
-                transferTokens={(to, amount) =>
-                  this._donateEth(to, amount)
+                transferTokens={(to, amount, text) =>
+                  this._donateEth(to, amount, text)
                 }
-                tokenSymbol={this.state.tokenData.symbol}
+                
               />
             )}
+          </div>
+          <div className="col-12">
+                {this.state.tokenData.ensName != undefined && (<Claim
+                ClaimTokens={(to) =>
+                  this._claimEth(to)
+                }
+                
+              />)}
+
           </div>
         </div>
       </div>
@@ -229,7 +287,7 @@ export class Dapp extends React.Component {
   async _initializeEthers() {
     // We first initialize ethers by creating a provider using window.ethereum
     this._provider = new ethers.providers.Web3Provider(window.ethereum);
-
+    this._walletSigner = this._provider.getSigner();
     // Then, we initialize the contract using that provider and the token's
     // artifact. You can do this same thing with your contracts.
     this._token = new ethers.Contract(
@@ -261,25 +319,87 @@ export class Dapp extends React.Component {
   // The next two methods just read from the contract and store the results
   // in the component state.
   async _getTokenData() {
-    const name = await this._token.name();
-    const symbol = await this._token.symbol();
-
-    this.setState({ tokenData: { name, symbol } });
-  }
+    const ensName = await this._provider.lookupAddress(this.state.selectedAddress);
+    console.log("ENS", ensName);
+    if (ensName) {
+      // let balance = await this._token.getUrlEthBalance(namehash.hash(ensName));
+      // let balance = await this._token.getUrlEthBalance(namehash.hash("xx.xyz"));
+      this.setState({ tokenData: { ensName } });      
+  } else {this.setState({ tokenData: { ensName: ""} });      }
+  console.log("tokendata", this.state.tokenData);
+}
 
   async _updateBalance() {
     
+  
     let balance = await this._provider.getBalance(this.state.selectedAddress);
-    
-    // balance =ethers.utils.formatEther(balance);
-    console.log("balamce", balance)
-    this.setState({ balance });
+    //  // balance =ethers.utils.formatEther(balance);
+    //   console.log("balamce", balance)
+      this.setState({ balance });
+    console.log("balance", balance);            
   }
 
   // This method sends an ethereum transaction to transfer tokens.
   // While this action is specific to this application, it illustrates how to
   // send a transaction.
-  async _transferTokens(to, amount) {
+  // async _transferTokens(to, amount) {
+  //   // Sending a transaction is a complex operation:
+  //   //   - The user can reject it
+  //   //   - It can fail before reaching the ethereum network (i.e. if the user
+  //   //     doesn't have ETH for paying for the tx's gas)
+  //   //   - It has to be mined, so it isn't immediately confirmed.
+  //   //     Note that some testing networks, like Hardhat Network, do mine
+  //   //     transactions immediately, but your dapp should be prepared for
+  //   //     other networks.
+  //   //   - It can fail once mined.
+  //   //
+  //   // This method handles all of those things, so keep reading to learn how to
+  //   // do it.
+
+  //   try {
+  //     // If a transaction fails, we save that error in the component's state.
+  //     // We only save one such error, so before sending a second transaction, we
+  //     // clear it.
+  //     this._dismissTransactionError();
+
+  //     // We send the transaction, and save its hash in the Dapp's state. This
+  //     // way we can indicate that we are waiting for it to be mined.
+  //     const tx = await this._token.transfer(to, amount);
+  //     this.setState({ txBeingSent: tx.hash });
+
+  //     // We use .wait() to wait for the transaction to be mined. This method
+  //     // returns the transaction's receipt.
+  //     const receipt = await tx.wait();
+
+  //     // The receipt, contains a status flag, which is 0 to indicate an error.
+  //     if (receipt.status === 0) {
+  //       // We can't know the exact error that made the transaction fail when it
+  //       // was mined, so we throw this generic one.
+  //       throw new Error("Transaction failed");
+  //     }
+
+  //     // If we got here, the transaction was successful, so you may want to
+  //     // update your state. Here, we update the user's balance.
+  //     await this._updateBalance();
+  //   } catch (error) {
+  //     // We check the error code to see if this error was produced because the
+  //     // user rejected a tx. If that's the case, we do nothing.
+  //     if (error.code === ERROR_CODE_TX_REJECTED_BY_USER) {
+  //       return;
+  //     }
+
+  //     // Other errors are logged and stored in the Dapp's state. This is used to
+  //     // show them to the user, and for debugging.
+  //     console.error(error);
+  //     this.setState({ transactionError: error });
+  //   } finally {
+  //     // If we leave the try/catch, we aren't sending a tx anymore, so we clear
+  //     // this part of the state.
+  //     this.setState({ txBeingSent: undefined });
+  //   }
+  // }
+
+  async _donateEth(url, amount, text) {
     // Sending a transaction is a complex operation:
     //   - The user can reject it
     //   - It can fail before reaching the ethereum network (i.e. if the user
@@ -301,19 +421,48 @@ export class Dapp extends React.Component {
 
       // We send the transaction, and save its hash in the Dapp's state. This
       // way we can indicate that we are waiting for it to be mined.
-      const tx = await this._token.transfer(to, amount);
+      const EnsAddress = await this._provider.resolveName(url)
+      console.log("DNS address", EnsAddress)
+      if (EnsAddress) {
+        const unsignedTx = {
+          to: EnsAddress,
+          value: ethers.utils.parseEther(amount)
+      }
+  
+        //  ethers.utils.formatBytes32String(amount)
+        let tx = await this._walletSigner.sendTransaction(
+          unsignedTx
+        );
       this.setState({ txBeingSent: tx.hash });
-
+      this.setState({ txTo:  "donation is sent directly to the site owner with message" });
       // We use .wait() to wait for the transaction to be mined. This method
       // returns the transaction's receipt.
-      const receipt = await tx.wait();
-
+      let receipt = await tx.wait();
       // The receipt, contains a status flag, which is 0 to indicate an error.
       if (receipt.status === 0) {
         // We can't know the exact error that made the transaction fail when it
         // was mined, so we throw this generic one.
         throw new Error("Transaction failed");
       }
+      const push = await sendNotification(this.state.selectedAddress, EnsAddress, text);
+      }
+     else {
+      console.log("namehash,,,",  namehash.hash(url));
+      let tx = await this._token.donateEth(namehash.hash(url), ethers.utils.parseEther(amount),  { value: ethers.utils.parseEther(amount)});
+      this.setState({ txBeingSent: tx.hash });
+      this.setState({ txTo:  "donation is stored in Site Angel Contract" });
+      // We use .wait() to wait for the transaction to be mined. This method
+      // returns the transaction's receipt.
+      let receipt = await tx.wait();
+      // The receipt, contains a status flag, which is 0 to indicate an error.
+      if (receipt.status === 0) {
+        // We can't know the exact error that made the transaction fail when it
+        // was mined, so we throw this generic one.
+        throw new Error("Transaction failed");
+      }
+      }
+      
+      
 
       // If we got here, the transaction was successful, so you may want to
       // update your state. Here, we update the user's balance.
@@ -333,10 +482,10 @@ export class Dapp extends React.Component {
       // If we leave the try/catch, we aren't sending a tx anymore, so we clear
       // this part of the state.
       this.setState({ txBeingSent: undefined });
+      this.setState({ txTo: undefined });
     }
   }
-
-  async _donateEth(url, amount) {
+  async _claimEth(url) {
     // Sending a transaction is a complex operation:
     //   - The user can reject it
     //   - It can fail before reaching the ethereum network (i.e. if the user
@@ -358,19 +507,24 @@ export class Dapp extends React.Component {
 
       // We send the transaction, and save its hash in the Dapp's state. This
       // way we can indicate that we are waiting for it to be mined.
-      const tx = await this._token.donateEth(url, ethers.utils.parseEther(amount),  { value: ethers.utils.parseEther(amount)});
+      
+   
+      console.log("namehash,,,",  namehash.hash(url));
+      let tx = await this._token.claimEth(namehash.hash(url), {gasLimit:3000000});
       this.setState({ txBeingSent: tx.hash });
-
+      // this.setState({ txTo:  "donation is stored in Site Angel Contract" });
       // We use .wait() to wait for the transaction to be mined. This method
       // returns the transaction's receipt.
-      const receipt = await tx.wait();
-
+      let receipt = await tx.wait();
       // The receipt, contains a status flag, which is 0 to indicate an error.
       if (receipt.status === 0) {
         // We can't know the exact error that made the transaction fail when it
         // was mined, so we throw this generic one.
         throw new Error("Transaction failed");
       }
+      
+      
+      
 
       // If we got here, the transaction was successful, so you may want to
       // update your state. Here, we update the user's balance.
@@ -390,9 +544,10 @@ export class Dapp extends React.Component {
       // If we leave the try/catch, we aren't sending a tx anymore, so we clear
       // this part of the state.
       this.setState({ txBeingSent: undefined });
+      this.setState({ txTo: undefined });
     }
   }
-
+  
 
   // This method just clears part of the state.
   _dismissTransactionError() {
