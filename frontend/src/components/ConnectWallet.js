@@ -1,10 +1,10 @@
 import React from "react";
-
 import { NetworkErrorMessage } from "./NetworkErrorMessage";
+import styles from "../styles/ConnectWallet.module.css";
 
 export function ConnectWallet({ connectWallet, networkError, dismiss }) {
   return (
-    <div className="container">
+    <div className={styles.connectwallet}>
       <div className="row justify-content-md-center">
         <div className="col-12 text-center">
           {/* Metamask network should be set to Localhost:8545. */}
