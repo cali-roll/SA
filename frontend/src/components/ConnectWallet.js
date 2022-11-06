@@ -1,6 +1,5 @@
 import React from "react";
 import { NetworkErrorMessage } from "./NetworkErrorMessage";
-import styles from "../styles/ConnectWallet.module.css";
 import '../styles/button.css';
 export function ConnectWallet({ connectWallet, networkError, dismiss }) {
   return (

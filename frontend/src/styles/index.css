@@ -1,8 +1,11 @@
-.btn {
-    background-image: linear-gradient(to right, #D0E3F7 , #FFEBF0);
+* {
+    font-family: 'Inter custom',sans-serif;
     font-weight: 600;
-    border: white;
+}
+
+.btn-primary {
     color: black;
+    font-weight: 600;
     background-color: black;
     border-color: black;
 }
@@ -13,3 +16,4 @@
     background-color: black;
     border-color: black;
 }
+
