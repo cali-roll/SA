@@ -1,5 +1,5 @@
 import React from "react";
-
+import '../styles/button.css';
 // We'll use ethers to interact with the Ethereum network and our contract
 import { ethers } from "ethers";
 
