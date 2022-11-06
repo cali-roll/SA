@@ -28,5 +28,9 @@
     "hardhat": "^2.11.0",
     "hardhat-gas-reporter": "^1.0.8",
     "solidity-coverage": "^0.7.21"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.7.3",
+    "dotenv": "^16.0.3"
   }
 }

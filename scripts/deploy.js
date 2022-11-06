@@ -1,61 +1,38 @@
-// This is a script for deploying your contracts. You can adapt it to deploy
-// yours, or create new ones.
+const main = async () => {
+  const [owner] = await hre.ethers.getSigners();
+  const ContractFactory = await hre.ethers.getContractFactory("SiteAngel")
 
-const path = require("path");
+  const Contract = await ContractFactory.deploy();
+  const SiteAngel = await Contract.deployed();
 
-async function main() {
-  // This is just a convenience check
-  if (network.name === "hardhat") {
-    console.warn(
-      "You are trying to deploy a contract to the Hardhat Network, which" +
-        "gets automatically created and destroyed every time. Use the Hardhat" +
-        " option '--network localhost'"
-    );
-  }
+  console.log(" SiteAmgel address: ", SiteAngel.address);
+  console.log("Contract deployed by:", owner.address);
 
-  // ethers is available in the global scope
-  const [deployer] = await ethers.getSigners();
-  console.log(
-    "Deploying the contracts with the account:",
-    await deployer.getAddress()
-  );
-
-  console.log("Account balance:", (await deployer.getBalance()).toString());
-
-  const Token = await ethers.getContractFactory("Token");
-  const token = await Token.deploy();
-  await token.deployed();
-
-  console.log("Token address:", token.address);
-
-  // We also save the contract's artifacts and address in the frontend directory
-  saveFrontendFiles(token);
+  let Txn0  = await Contract.donateEth("wherememe.xyz",  ethers.utils.parseEther("0.0001"), { value: ethers.utils.parseEther("0.0001")});
+  console.log("Mining...", Txn0.hash);
+  await Txn0.wait();
+  let Txn1  = await Contract.donateEth("xx.xyz",  ethers.utils.parseEther("0.0001"), { value: ethers.utils.parseEther("0.0001")});
+  console.log("Mining...", Txn0.hash);
+  await Txn1.wait();
+  
+  let balance = await Contract.getUrlEthBalance("xx.xyz");
+  console.log("balance", Number(balance)/ Math.pow(10, 18));      
+  let contractbalance = await Contract.getBalance();
+  console.log("contractbalance", Number(contractbalance) / Math.pow(10, 18));
+  let claim = Contract.claimEth("xx.xyz");
+  // console.log("claimed");
+  contractbalance = await Contract.getBalance();
+  console.log("contractbalance", Number(contractbalance) / Math.pow(10, 18));
 }
 
-function saveFrontendFiles(token) {
-  const fs = require("fs");
-  const contractsDir = path.join(__dirname, "..", "frontend", "src", "contracts");
-
-  if (!fs.existsSync(contractsDir)) {
-    fs.mkdirSync(contractsDir);
-  }
-
-  fs.writeFileSync(
-    path.join(contractsDir, "contract-address.json"),
-    JSON.stringify({ Token: token.address }, undefined, 2)
-  );
-
-  const TokenArtifact = artifacts.readArtifactSync("Token");
-
-  fs.writeFileSync(
-    path.join(contractsDir, "Token.json"),
-    JSON.stringify(TokenArtifact, null, 2)
-  );
-}
-
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
+const runMain = async () => {
+  try {
+    await main();
+    process.exit(0);
+  } catch (error) {
+    console.log(error);
     process.exit(1);
-  });
+  }
+};
+
+runMain();

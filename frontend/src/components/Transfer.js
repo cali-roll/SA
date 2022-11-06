@@ -3,7 +3,7 @@ import React from "react";
 export function Transfer({ transferTokens, tokenSymbol }) {
   return (
     <div>
-      <h4>Transfer</h4>
+      <h4></h4>
       <form
         onSubmit={(event) => {
           // This function just calls the transferTokens callback with the
@@ -20,22 +20,21 @@ export function Transfer({ transferTokens, tokenSymbol }) {
         }}
       >
         <div className="form-group">
-          <label>Amount of {tokenSymbol}</label>
+          <label>Amount of ethers you donate</label>
           <input
             className="form-control"
-            type="number"
-            step="1"
+            type="string"          
             name="amount"
-            placeholder="1"
+            placeholder="0.001"
             required
           />
         </div>
         <div className="form-group">
-          <label>Recipient address</label>
+          <label>URL(ens.domains)</label>
           <input className="form-control" type="text" name="to" required />
         </div>
         <div className="form-group">
-          <input className="btn btn-primary" type="submit" value="Transfer" />
+          <input className="btn btn-primary" type="submit" value="Donate" />
         </div>
       </form>
     </div>

@@ -5,8 +5,8 @@ import { ethers } from "ethers";
 
 // We import the contract's artifacts and address here, as we are going to be
 // using them with ethers
-import TokenArtifact from "../contracts/Token.json";
-import contractAddress from "../contracts/contract-address.json";
+import SiteAngelArtifact from "../contracts/SiteAngel.json";
+// import contractAddress from "../artifacts/contracts/contract-address.json";
 
 // All the logic of this dapp is contained in the Dapp component.
 // These other components are just presentational ones: they don't have any
@@ -22,7 +22,8 @@ import { NoTokensMessage } from "./NoTokensMessage";
 // This is the Hardhat Network id that we set in our hardhat.config.js.
 // Here's a list of network ids https://docs.metamask.io/guide/ethereum-provider.html#properties
 // to use when deploying to other networks.
-const HARDHAT_NETWORK_ID = '1337';
+const contractAddress = "0x38e402483Ef1E5d2C811c9d5DdCA78B3d7587462";
+const HARDHAT_NETWORK_ID = '5';
 
 // This is an error code that indicates that the user canceled a transaction
 const ERROR_CODE_TX_REJECTED_BY_USER = 4001;
@@ -53,6 +54,8 @@ export class Dapp extends React.Component {
       txBeingSent: undefined,
       transactionError: undefined,
       networkError: undefined,
+      ethbalance: undefined,
+
     };
 
     this.state = this.initialState;
@@ -88,18 +91,18 @@ export class Dapp extends React.Component {
       return <Loading />;
     }
 
-    // If everything is loaded, we render the application.
+    // If everything is loaded, we render the application. ここに、transferのフォームが作ってあるのね！！
     return (
       <div className="container p-4">
         <div className="row">
           <div className="col-12">
             <h1>
-              {this.state.tokenData.name} ({this.state.tokenData.symbol})
+             Donate to Url
             </h1>
             <p>
               Welcome <b>{this.state.selectedAddress}</b>, you have{" "}
               <b>
-                {this.state.balance.toString()} {this.state.tokenData.symbol}
+                {Math.round(ethers.utils.formatEther(this.state.balance) * 1e4) / 1e4} eth
               </b>
               .
             </p>
@@ -150,7 +153,7 @@ export class Dapp extends React.Component {
             {this.state.balance.gt(0) && (
               <Transfer
                 transferTokens={(to, amount) =>
-                  this._transferTokens(to, amount)
+                  this._donateEth(to, amount)
                 }
                 tokenSymbol={this.state.tokenData.symbol}
               />
@@ -230,8 +233,8 @@ export class Dapp extends React.Component {
     // Then, we initialize the contract using that provider and the token's
     // artifact. You can do this same thing with your contracts.
     this._token = new ethers.Contract(
-      contractAddress.Token,
-      TokenArtifact.abi,
+      contractAddress,
+      SiteAngelArtifact.abi,
       this._provider.getSigner(0)
     );
   }
@@ -265,7 +268,11 @@ export class Dapp extends React.Component {
   }
 
   async _updateBalance() {
-    const balance = await this._token.balanceOf(this.state.selectedAddress);
+    
+    let balance = await this._provider.getBalance(this.state.selectedAddress);
+    
+    // balance =ethers.utils.formatEther(balance);
+    console.log("balamce", balance)
     this.setState({ balance });
   }
 
@@ -329,6 +336,64 @@ export class Dapp extends React.Component {
     }
   }
 
+  async _donateEth(url, amount) {
+    // Sending a transaction is a complex operation:
+    //   - The user can reject it
+    //   - It can fail before reaching the ethereum network (i.e. if the user
+    //     doesn't have ETH for paying for the tx's gas)
+    //   - It has to be mined, so it isn't immediately confirmed.
+    //     Note that some testing networks, like Hardhat Network, do mine
+    //     transactions immediately, but your dapp should be prepared for
+    //     other networks.
+    //   - It can fail once mined.
+    //
+    // This method handles all of those things, so keep reading to learn how to
+    // do it.
+
+    try {
+      // If a transaction fails, we save that error in the component's state.
+      // We only save one such error, so before sending a second transaction, we
+      // clear it.
+      this._dismissTransactionError();
+
+      // We send the transaction, and save its hash in the Dapp's state. This
+      // way we can indicate that we are waiting for it to be mined.
+      const tx = await this._token.donateEth(url, ethers.utils.parseEther(amount),  { value: ethers.utils.parseEther(amount)});
+      this.setState({ txBeingSent: tx.hash });
+
+      // We use .wait() to wait for the transaction to be mined. This method
+      // returns the transaction's receipt.
+      const receipt = await tx.wait();
+
+      // The receipt, contains a status flag, which is 0 to indicate an error.
+      if (receipt.status === 0) {
+        // We can't know the exact error that made the transaction fail when it
+        // was mined, so we throw this generic one.
+        throw new Error("Transaction failed");
+      }
+
+      // If we got here, the transaction was successful, so you may want to
+      // update your state. Here, we update the user's balance.
+      await this._updateBalance();
+    } catch (error) {
+      // We check the error code to see if this error was produced because the
+      // user rejected a tx. If that's the case, we do nothing.
+      if (error.code === ERROR_CODE_TX_REJECTED_BY_USER) {
+        return;
+      }
+
+      // Other errors are logged and stored in the Dapp's state. This is used to
+      // show them to the user, and for debugging.
+      console.error(error);
+      this.setState({ transactionError: error });
+    } finally {
+      // If we leave the try/catch, we aren't sending a tx anymore, so we clear
+      // this part of the state.
+      this.setState({ txBeingSent: undefined });
+    }
+  }
+
+
   // This method just clears part of the state.
   _dismissTransactionError() {
     this.setState({ transactionError: undefined });
@@ -361,7 +426,7 @@ export class Dapp extends React.Component {
     }
 
     this.setState({ 
-      networkError: 'Please connect Metamask to Localhost:8545'
+      networkError: 'Please connect Metamask to  Goerli'
     });
 
     return false;
