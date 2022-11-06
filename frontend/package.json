@@ -10,6 +10,7 @@
     "dotenv": "^16.0.3",
     "eth-ens-namehash": "^2.0.8",
     "ethers": "^5.7.2",
+    "link": "^1.5.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

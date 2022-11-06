@@ -1,6 +1,8 @@
 import React from "react";
+import '../styles/button.css';
 import namehash from "eth-ens-namehash";
 import { Buffer } from 'buffer';
+
 // We'll use ethers to interact with the Ethereum network and our contract
 import { ethers } from "ethers";
 import * as PushAPI from "@pushprotocol/restapi";

@@ -1,6 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import { Dapp } from "./components/Dapp";
+import Navbar from "./components/Navbar";
+import './styles/index.css';
 
 // We import bootstrap here, but you can remove if you want
 import "bootstrap/dist/css/bootstrap.css";
@@ -10,7 +12,9 @@ import "bootstrap/dist/css/bootstrap.css";
 
 ReactDOM.render(
   <React.StrictMode>
+    <Navbar />
     <Dapp />
   </React.StrictMode>,
+
   document.getElementById("root")
 );

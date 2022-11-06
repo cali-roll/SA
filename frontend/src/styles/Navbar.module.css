@@ -1,0 +1,22 @@
+.navbar {
+    display: flex;
+    justify-content: center;
+    column-gap: 2em;
+    /* background-color: red; */
+    background-image: linear-gradient(to right, #D0E3F7 , #FFEBF0);
+    padding: 1em 0 1em 0;
+    padding: 15px;
+    font-size: 16px;
+    font-weight: 600;
+    align-items: center;
+}
+
+
+.navbar a:hover {
+    font-weight: bold;
+    font-family: 'Inter custom',sans-serif;
+}
+
+.img {
+    align-items: center;
+}
